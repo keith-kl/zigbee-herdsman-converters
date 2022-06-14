@@ -2285,13 +2285,12 @@ const converters = {
             const value = tuya.getDataValue(dpValue);
 
             switch (dp) {
-            case tuya.dataPoints.coverPosition: { // Started moving to position (triggered from Zigbee)
-                return {running: true};
-            }
+            case tuya.dataPoints.coverPosition: // Started moving to position (triggered from Zigbee)
             case tuya.dataPoints.coverArrived: { // Arrived at position
-                const running = dp === tuya.dataPoints.coverArrived ? false : true;
                 const invert = tuya.isCoverInverted(meta.device.manufacturerName) ? !options.invert_cover : options.invert_cover;
                 const position = invert ? 100 - (value & 0xFF) : (value & 0xFF);
+                let running = position == 0 || position == 100;
+                if (dp === tuya.dataPoints.coverArrived) running = false;
 
                 if (position > 0 && position <= 100) {
                     return {running, position, state: 'OPEN'};
@@ -3986,7 +3985,7 @@ const converters = {
                 return {deadzone_temperature: value};
             case tuya.dataPoints.moesLocalTemp:
                 temperature = value & 1<<15 ? value - (1<<16) + 1 : value;
-                if (meta.device.manufacturerName !== '_TZE200_ye5jkfsb') {
+                if (!['_TZE200_ztvwu4nk', '_TZE200_ye5jkfsb'].includes(meta.device.manufacturerName)) {
                     // https://github.com/Koenkk/zigbee2mqtt/issues/11980
                     temperature = temperature / 10;
                 }
@@ -5285,7 +5284,7 @@ const converters = {
             const value = tuya.getDataValue(dpValue);
             const state = value ? 'ON' : 'OFF';
             if (multiEndpoint) {
-                const lookup = {1: 'l1', 2: 'l2', 3: 'l3', 4: 'l4'};
+                const lookup = {1: 'l1', 2: 'l2', 3: 'l3', 4: 'l4', 5: 'l5', 6: 'l6'};
                 const endpoint = lookup[dp];
                 if (endpoint in model.endpoint(msg.device)) {
                     return {[`state_${endpoint}`]: state};
@@ -7329,7 +7328,7 @@ const converters = {
             case 4:
                 return {battery: value};
             case 1:
-                return {battery_low: value.toFixed(1)};
+                return {battery_low: value === 1};
             default:
                 meta.logger.warn(`s_lux_zb_illuminance: NOT RECOGNIZED DP #${dp} with data ${JSON.stringify(dpValue)}`);
             }
